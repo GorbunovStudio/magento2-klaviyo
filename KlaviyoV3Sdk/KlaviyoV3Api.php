@@ -354,7 +354,7 @@ class KlaviyoV3Api
      * @param array|null $properties
      * @return array
      */
-    public function updateProfile(string $id, $firstName = null, $lastName = null, $properties = null)
+    public function updateProfile($id, $firstName = null, $lastName = null, $properties = null)
     {
         $attributes = [];
         if ($firstName !== null) {
@@ -372,7 +372,6 @@ class KlaviyoV3Api
                 self::ATTRIBUTE_KEY_PAYLOAD => $attributes
             ]
         ];
-
         $result = $this->requestV3("api/profiles/{$id}", self::HTTP_PATCH, $body);
         return ['data' => $result];
     }
