@@ -202,6 +202,26 @@ class Data extends AbstractHelper
     }
 
     /**
+     * Proxy method to update a Klaviyo profile with custom properties
+     *
+     * @param string $id
+     * @param string|null $firstName
+     * @param string|null $lastName
+     * @param array|null $properties
+     * @param int|null $storeId
+     * @return array
+     */
+    public function updateProfile(string $id, $firstName = null, $lastName = null, $properties = null, $storeId = null)
+    {
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting
+        );
+        return $api->updateProfile($id, $firstName, $lastName, $properties);
+    }
+
+    /**
      * Get the external catalog ID for an event. This is used to link events to a specific scoped catalog in Klaviyo, so that
      * profile interest events can be connected to a specific scoped product when building flow audiences.
      *

@@ -21,6 +21,7 @@ class KlaviyoV3Api
      */
     const HTTP_GET = 'GET';
     const HTTP_POST = 'POST';
+    const HTTP_PATCH = 'PATCH';
 
     /**
      * Error messages
@@ -68,6 +69,8 @@ class KlaviyoV3Api
     const PROFILES_PAYLOAD_KEY = 'profiles';
     const CUSTOM_SOURCE_PAYLOAD_KEY = 'custom_source';
     const MAGENTO_TWO_PAYLOAD_VALUE = 'Magento Two';
+    const FIRST_NAME_KEY_PAYLOAD = 'first_name';
+    const LAST_NAME_KEY_PAYLOAD = 'last_name';
 
     /**
      * @var string
@@ -340,6 +343,38 @@ class KlaviyoV3Api
         );
 
         return $this->requestV3('/api/profile-subscription-bulk-delete-jobs/', self::HTTP_POST, $body);
+    }
+
+    /**
+     * Update a profile with custom properties
+     *
+     * @param string $id
+     * @param string|null $firstName
+     * @param string|null $lastName
+     * @param array|null $properties
+     * @return array
+     */
+    public function updateProfile(string $id, $firstName = null, $lastName = null, $properties = null)
+    {
+        $attributes = [];
+        if ($firstName !== null) {
+            $attributes[self::FIRST_NAME_KEY_PAYLOAD] = $firstName;
+        }
+        if ($lastName !== null) {
+            $attributes[self::LAST_NAME_KEY_PAYLOAD] = $lastName;
+        }
+        if ($properties !== null) {
+            $attributes[self::PROPERTIES] = $properties;
+        }
+        $body = [
+            self::DATA_KEY_PAYLOAD => [
+                self::TYPE_KEY_PAYLOAD => self::PROFILE_KEY_PAYLOAD,
+                self::ATTRIBUTE_KEY_PAYLOAD => $attributes
+            ]
+        ];
+
+        $result = $this->requestV3("api/profiles/{$id}", self::HTTP_PATCH, $body);
+        return ['data' => $result];
     }
 
     /**
