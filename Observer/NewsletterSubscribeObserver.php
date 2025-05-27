@@ -69,20 +69,23 @@ class NewsletterSubscribeObserver implements ObserverInterface
 
             $properties = $this->propertiesFactory->create();
 
-           $this->eventManager->dispatch(
-            'before_subscribe_email_to_klaviyo_list',
-            [
-                'customer' => $customer,
-                'subscriber' => $subscriber,
-                'properties' => $properties
-            ]
-        );
-
+            $this->eventManager->dispatch(
+                'before_subscribe_email_to_klaviyo_list',
+                [
+                    'customer' => $customer,
+                    'subscriber' => $subscriber,
+                    'properties' => $properties
+                ]
+            );
+            
             if ($subscriber->getId() && $subscriptionStatus === Subscriber::STATUS_SUBSCRIBED) {
+                $customProperties = $properties->getData('properties');
                 $this->helper->subscribeEmailToKlaviyoList(
                     $customer ? $customer->getEmail() : $subscriber->getEmail(),
                     $customer ? $customer->getFirstname() : $subscriber->getFirstname(),
-                    $customer ? $customer->getLastname() : $subscriber->getLastname()
+                    $customer ? $customer->getLastname() : $subscriber->getLastname(),
+                    $subscriber->getStoreId(),
+                    $customProperties
                 );
             }
 
