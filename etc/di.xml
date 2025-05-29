@@ -3,7 +3,7 @@
     <preference for="Klaviyo\Reclaim\Api\ReclaimInterface"
                 type="Klaviyo\Reclaim\Model\Reclaim" />
     <preference for="Klaviyo\Reclaim\Api\Data\PropertiesInterface"
-                type="Klaviyo\Reclaim\Model\Data\Properties" />
+                type="Klaviyo\Reclaim\Model\Properties" />
     <type name="Klaviyo\Reclaim\Logger\Handler">
         <arguments>
             <argument name="filesystem" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
