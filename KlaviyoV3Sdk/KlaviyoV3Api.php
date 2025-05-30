@@ -369,6 +369,7 @@ class KlaviyoV3Api
         $body = [
             self::DATA_KEY_PAYLOAD => [
                 self::TYPE_KEY_PAYLOAD => self::PROFILE_KEY_PAYLOAD,
+                self::ID_KEY_PAYLOAD => $id,
                 self::ATTRIBUTE_KEY_PAYLOAD => $attributes
             ]
         ];
