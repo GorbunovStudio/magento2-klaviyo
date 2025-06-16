@@ -4,8 +4,9 @@ namespace Klaviyo\Reclaim\Helper;
 
 use Klaviyo\Reclaim\KlaviyoV3Sdk\KlaviyoV3Api;
 use Magento\Framework\App\Helper\Context;
+use Magento\Framework\App\Helper\AbstractHelper;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+class Data extends AbstractHelper
 {
     const USER_AGENT = 'Klaviyo/1.0';
     const KLAVIYO_HOST = 'https://a.klaviyo.com/';
@@ -92,24 +93,34 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
      * @param string $email
      * @param string|null $firstName
      * @param string|null $lastName
-     * @param string|null $source
+     * @param int|null $storeId
+     * @param array|null $properties 
+     * @param string|null $listId
      * @return array|false|null|string
      */
-    public function subscribeEmailToKlaviyoList($email, $firstName = null, $lastName = null)
+    public function subscribeEmailToKlaviyoList($email, $firstName = null, $lastName = null, $storeId = null, $properties = null, $listId = null)
     {
-        $listId = $this->_klaviyoScopeSetting->getNewsletter();
-        $optInSetting = $this->_klaviyoScopeSetting->getOptInSetting();
+        $resolvedListId = $listId ?: $this->_klaviyoScopeSetting->getNewsletter($storeId);
+        $optInSetting = $this->_klaviyoScopeSetting->getOptInSetting($storeId);
 
-        $properties = [];
-        $properties['email'] = $email;
+        $profileData = [];
+        $profileData['email'] = $email;
         if ($firstName) {
-            $properties['first_name'] = $firstName;
+            $profileData['first_name'] = $firstName;
         }
         if ($lastName) {
-            $properties['last_name'] = $lastName;
+            $profileData['last_name'] = $lastName;
+        }
+        if ($properties && is_array($properties) && !empty($properties)) {
+            $profileData['properties'] = $properties;
         }
 
-        $api = new KlaviyoV3Api($this->_klaviyoScopeSetting->getPublicApiKey(), $this->_klaviyoScopeSetting->getPrivateApiKey(), $this->_klaviyoScopeSetting, $this->_klaviyoLogger);
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting,
+            $this->_klaviyoLogger
+        );
 
         try {
             if ($optInSetting == ScopeSetting::API_SUBSCRIBE) {
@@ -121,40 +132,54 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
                         'subscriptions' => array(
                             'email' => array(
                                 'marketing' => array(
-                                    "consent" => "SUBSCRIBED"
+                                    'consent' => 'SUBSCRIBED'
                                 )
                             )
                         )
                     )
                 );
-
-                $api->subscribeMembersToList($listId, array($consent_profile_object));
+                $api->subscribeMembersToList($resolvedListId, array($consent_profile_object));
+                if ($properties && is_array($properties) && !empty($properties)) {
+                    $profile = $api->searchProfileByEmail($email);
+                    if ($profile && !empty($profile['profile_id'])) {
+                        $api->updateProfile($profile['profile_id'], $firstName, $lastName, $properties);
+                    }
+                }
             } else {
                 // Search for profile by email using the api/profiles endpoint
                 $existing_profile = $api->searchProfileByEmail($email);
                 if (!$existing_profile) {
                     // If the profile exists, use the ID to add to a list
                     // If the profile does not exist, create
-                    $new_profile = $api->createProfile($properties);
-                    $api->addProfileToList($listId, $new_profile["profile_id"]);
+                    $new_profile = $api->createProfile($profileData);
+                    $api->addProfileToList($resolvedListId, $new_profile['profile_id']);
                 } else {
-                    $profile_id = $existing_profile["profile_id"];
-                    $api->addProfileToList($listId, $profile_id);
+                    $profile_id = $existing_profile['profile_id'];
+                    $api->addProfileToList($resolvedListId, $profile_id);
+                    if ($properties && is_array($properties) && !empty($properties)) {
+                        $api->updateProfile($profile_id, $firstName, $lastName, $properties);
+                    }
                 }
             }
         } catch (\Exception $e) {
-            $this->_klaviyoLogger->log(sprintf('Unable to subscribe %s to list %s: %s', $email, $listId, $e));
+            $this->_klaviyoLogger->log(sprintf('Unable to subscribe %s to list %s: %s', $email, $resolvedListId, $e));
         }
     }
 
     /**
      * @param string $email
+     * @param int|null $storeId
      * @return array|string|null
      */
-    public function unsubscribeEmailFromKlaviyoList($email)
+    public function unsubscribeEmailFromKlaviyoList($email, $storeId = null)
     {
-        $api = new KlaviyoV3Api($this->_klaviyoScopeSetting->getPublicApiKey(), $this->_klaviyoScopeSetting->getPrivateApiKey(), $this->_klaviyoScopeSetting, $this->_klaviyoLogger);
-        $listId = $this->_klaviyoScopeSetting->getNewsletter();
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting,
+            $this->_klaviyoLogger
+        );
+        $listId = $this->_klaviyoScopeSetting->getNewsletter($storeId);
         try {
             $response = $api->unsubscribeEmailFromKlaviyoList($email, $listId);
         } catch (\Exception $e) {
@@ -189,6 +214,27 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
+     * Proxy method to update a Klaviyo profile with custom properties
+     *
+     * @param string $id
+     * @param string|null $firstName
+     * @param string|null $lastName
+     * @param array|null $properties
+     * @param int|null $storeId
+     * @return array
+     */
+    public function updateProfile($id, $firstName = null, $lastName = null, $properties = null, $storeId = null)
+    {
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting,
+            $this->_klaviyoLogger
+        );
+        return $api->updateProfile($id, $firstName, $lastName, $properties);
+    }
+
+    /**
      * Get the external catalog ID for an event. This is used to link events to a specific scoped catalog in Klaviyo, so that
      * profile interest events can be connected to a specific scoped product when building flow audiences.
      *
@@ -200,4 +246,23 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     {
         return $website_id . '-' . $store_id;
     }
+
+    /**
+     * Proxy method to search Klaviyo profile by email
+     *
+     * @param string $email
+     * @param int|null $storeId
+     * @return false|mixed
+     */
+    public function searchProfileByEmail($email, $storeId = null)
+    {
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting,
+            $this->_klaviyoLogger
+        );
+        return $api->searchProfileByEmail($email);
+    }
+
 }
