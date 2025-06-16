@@ -11,6 +11,8 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Newsletter\Model\Subscriber;
+use Magento\Framework\Event\ManagerInterface;
+use Klaviyo\Reclaim\Api\Data\PropertiesInterfaceFactory;
 
 class NewsletterSubscribeObserver implements ObserverInterface
 {
@@ -28,15 +30,29 @@ class NewsletterSubscribeObserver implements ObserverInterface
      * @var CustomerRepositoryInterface
      */
     protected $customerRepository;
+    /**
+     * @var ManagerInterface
+     */
+    protected $eventManager;
+    /**
+     * @var PropertiesInterfaceFactory
+     */
+    protected $propertiesFactory;
+
 
     public function __construct(
         Data $helper,
         ScopeSetting $scopeSetting,
-        CustomerRepositoryInterface $customerRepository
+        CustomerRepositoryInterface $customerRepository,
+        ManagerInterface $eventManager,
+        PropertiesInterfaceFactory $propertiesFactory
+
     ) {
         $this->helper = $helper;
         $this->scopeSetting = $scopeSetting;
         $this->customerRepository = $customerRepository;
+        $this->eventManager = $eventManager;
+        $this->propertiesFactory = $propertiesFactory;
     }
 
     public function execute(Observer $observer)
@@ -51,12 +67,25 @@ class NewsletterSubscribeObserver implements ObserverInterface
             $subscriptionStatus = $subscriber->getStatus();
             $customer = $this->getCustomer($subscriber);
 
+            $properties = $this->propertiesFactory->create();
+
+            $this->eventManager->dispatch(
+                'before_subscribe_email_to_klaviyo_list',
+                [
+                    'customer' => $customer,
+                    'subscriber' => $subscriber,
+                    'properties' => $properties
+                ]
+            );
+            
             if ($subscriber->getId() && $subscriptionStatus === Subscriber::STATUS_SUBSCRIBED) {
+                $customProperties = $properties->getData('properties');
                 $this->helper->subscribeEmailToKlaviyoList(
                     $customer ? $customer->getEmail() : $subscriber->getEmail(),
                     $customer ? $customer->getFirstname() : $subscriber->getFirstname(),
                     $customer ? $customer->getLastname() : $subscriber->getLastname(),
-                    $subscriber->getStoreId()
+                    $subscriber->getStoreId(),
+                    $customProperties
                 );
             }
 

@@ -246,4 +246,23 @@ class Data extends AbstractHelper
     {
         return $website_id . '-' . $store_id;
     }
+
+    /**
+     * Proxy method to search Klaviyo profile by email
+     *
+     * @param string $email
+     * @param int|null $storeId
+     * @return false|mixed
+     */
+    public function searchProfileByEmail($email, $storeId = null)
+    {
+        $api = new KlaviyoV3Api(
+            $this->_klaviyoScopeSetting->getPublicApiKey($storeId),
+            $this->_klaviyoScopeSetting->getPrivateApiKey($storeId),
+            $this->_klaviyoScopeSetting,
+            $this->_klaviyoLogger
+        );
+        return $api->searchProfileByEmail($email);
+    }
+
 }
