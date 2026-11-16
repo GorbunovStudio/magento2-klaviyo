@@ -3,8 +3,11 @@
 namespace Klaviyo\Reclaim\Observer;
 
 use Klaviyo\Reclaim\Helper\Data;
+use Klaviyo\Reclaim\Helper\Logger;
+use Klaviyo\Reclaim\Helper\ScopeSetting;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
+use Magento\Catalog\Helper\Image;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Catalog\Api\ProductRepositoryInterface;
@@ -30,23 +33,52 @@ class SalesQuoteProductAddAfter implements ObserverInterface
     private $productRepository;
 
     /**
+     * Magento Image Helper
+     * @var Image
+     */
+    private $imageHelper;
+
+    private $logger;
+
+    /**
+     * Klaviyo Scope Setting
+     * @var ScopeSetting
+     */
+    private $scopeSetting;
+
+    private const IMAGE_PRIORITY = [
+        'small_image',
+        'image',
+        'thumbnail',
+    ];
+
+    /**
      * @param Data $dataHelper
      * @param CategoryFactory $categoryFactory
      */
     public function __construct(
         Data $dataHelper,
         CategoryFactory $categoryFactory,
-        ProductRepositoryInterface $productRepository
+        ProductRepositoryInterface $productRepository,
+        Image $imageHelper,
+        Logger $logger,
+        ScopeSetting $scopeSetting
     ) {
+        $this->scopeSetting = $scopeSetting;
         $this->_dataHelper = $dataHelper;
         $this->_categoryFactory = $categoryFactory;
         $this->productRepository = $productRepository;
+        $this->imageHelper = $imageHelper;
+        $this->logger = $logger;
     }
 
     public function execute(Observer $observer)
     {
         $addedItems = $observer->getData('items');
         $quote = $addedItems[0]->getQuote();
+        if (!$this->scopeSetting->isEnabled($quote->getStoreId())) {
+            return;
+        }
 
         // Create a list of Simple Product Ids being added as part of a bundle.
         // We collect the Item name and Qty added to cart, to be sent as AddedItemBundleOptions with the payload.
@@ -78,12 +110,29 @@ class SalesQuoteProductAddAfter implements ObserverInterface
     public function klAddedToCartItemData($quote, $addedItem)
     {
         $addedProduct = $addedItem->getProduct();
+
+        // load the product fully, the product from the quote item may not have all the image attributes
+        $storeId = $addedItem->getStoreId();
+        if (!$storeId) {
+            $storeId = $quote->getStoreId();
+        }
+        if (!$storeId) {
+            $storeId = 0;
+        }
+        $fullyLoadedCartItem = $this->productRepository->getById(
+            (int) $addedItem->getProductId(),
+            false,
+            (int) $storeId,
+            true
+        );
+
         # try to grab the simple product
         $simpleProduct = $this->getSimpleProductForEvent($addedItem);
 
         $addedItemData = [
             'AddedItemCategories' => (array) $addedProduct->getCategoryIds(),
-            'AddedItemImageUrlKey' => $this->getImagePreferringVariant($addedProduct, $simpleProduct),
+            'AddedItemImageUrlKey' => $this->getImageKeyPreferringVariant($fullyLoadedCartItem, $simpleProduct),
+            'AddedItemImageUrl' => $this->getImageUrlPreferringVariant($fullyLoadedCartItem, $simpleProduct),
             'AddedItemPrice' => (float) $addedProduct->getFinalPrice(),
             'AddedItemQuantity' => (int) $addedItem->getQty(),
             'AddedItemProductID' => (int) $addedProduct->getId(),
@@ -133,7 +182,7 @@ class SalesQuoteProductAddAfter implements ObserverInterface
             $itemName = $item->getName();
             $currentProduct = [
                 'Categories' => (array) $itemCategories,
-                'ImageUrlKey' => $this->getImagePreferringVariant($product, $simpleProduct),
+                'ImageUrlKey' => $this->getImageKeyPreferringVariant($product, $simpleProduct),
                 'ProductId' => (int) $cartItemId,
                 'SimpleProductId' => (int) is_null($simpleProduct) ? null : $simpleProduct->getId(),
                 'Price' => (float) $product->getFinalPrice(),
@@ -206,28 +255,68 @@ class SalesQuoteProductAddAfter implements ObserverInterface
         # try to grab the simple product
         $simpleProduct = null;
         try {
-            if ($addedItem->getProductType() == "configurable") {
+            if ($addedItem->getProductType() == "configurable" || $addedItem->getProductType() == "simple") {
+                // if $addedItem is configurable, the 'sku' on the item will point to the simple item that was ordered
+                // if $addedItem is simple, return the product object so we can still populate the simple product related fields on the payload
                 $simpleProduct = $this->productRepository->get($addedItem->getSku());
-            } elseif ($addedItem->getProductType() == "simple") {
-                $simpleProduct = $addedItem->getProduct();
             }
         } catch (NoSuchEntityException $ex) {
         }
         return $simpleProduct;
     }
 
+    private function doesImageExist($image)
+    {
+        return ($image !== null && $image !== 'no_selection' && $image !== '');
+    }
+
+    private function getProductByExistingImage($addedItem, $addedSimpleProduct)
+    {
+        if (is_null($addedSimpleProduct)) {
+            return $addedItem;
+        }
+
+        foreach (self::IMAGE_PRIORITY as $attributeCode) {
+            $imageValue = $addedSimpleProduct->getData($attributeCode);
+            if ($this->doesImageExist($imageValue)) {
+                return $addedSimpleProduct;
+            }
+        }
+
+        # if none of the images exist on the simple product, return the addedItem
+        return $addedItem;
+    }
+
     /**
      * Helper function to get the correct image path
      * @param $addedItem
+     * @param $addedSimpleProduct
      * @return string
      */
-    public function getImagePreferringVariant($addedItem, $addedSimpleProduct): string
+    public function getImageKeyPreferringVariant($addedItem, $addedSimpleProduct): string
     {
-        $productToTest = $addedSimpleProduct;
-        if (is_null($addedSimpleProduct) || is_null($addedSimpleProduct->getData('small_image'))) {
-            $productToTest = $addedItem;
+        $product = $this->getProductByExistingImage($addedItem, $addedSimpleProduct);
+
+        foreach (self::IMAGE_PRIORITY as $attributeCode) {
+            $imageValue = $product->getData($attributeCode);
+            if ($this->doesImageExist($imageValue)) {
+                return stripslashes($imageValue);
+            }
         }
 
-        return is_null($productToTest->getData('small_image')) ? "" : stripslashes($productToTest->getData('small_image'));
+        return "";
+    }
+
+    /**
+     * Helper function to get the correct image url
+     * @param $addedItem
+     * @param $addedSimpleProduct
+     * @return string
+     */
+    public function getImageUrlPreferringVariant($addedItem, $addedSimpleProduct): string
+    {
+        $product = $this->getProductByExistingImage($addedItem, $addedSimpleProduct);
+
+        return $this->imageHelper->init($product, 'product_base_image')->getUrl();
     }
 }

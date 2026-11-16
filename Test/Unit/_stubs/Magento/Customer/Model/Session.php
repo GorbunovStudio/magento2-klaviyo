@@ -1,0 +1,21 @@
+<?php
+
+namespace Magento\Customer\Model;
+
+if (!class_exists(\Magento\Customer\Model\Session::class)) {
+    class Session
+    {
+        public function isLoggedIn(): bool
+        {
+            return false;
+        }
+        public function getCustomer()
+        {
+            return null;
+        }
+        public function getCustomerData()
+        {
+            return null;
+        }
+    }
+}

@@ -6,6 +6,7 @@ use Exception;
 use Klaviyo\Reclaim\Helper\Logger;
 use Klaviyo\Reclaim\Helper\Webhook;
 use Klaviyo\Reclaim\Helper\Data;
+use Klaviyo\Reclaim\Helper\ScopeSetting;
 use Klaviyo\Reclaim\Model\ResourceModel\Syncs\CollectionFactory;
 
 class KlSyncs
@@ -35,17 +36,26 @@ class KlSyncs
     protected $_dataHelper;
 
     /**
+     * Klaviyo Scope Setting
+     * @var ScopeSetting
+     */
+    protected $_klaviyoScopeSetting;
+
+    /**
      * @param Logger $klaviyoLogger
      * @param CollectionFactory $syncCollectionFactory
      * @param Data $datahelper
      * @param Webhook $webhookHelper
+     * @param ScopeSetting $klaviyoScopeSetting
      */
     public function __construct(
         Logger $klaviyoLogger,
         CollectionFactory $syncCollectionFactory,
         Data $datahelper,
-        Webhook $webhookHelper
+        Webhook $webhookHelper,
+        ScopeSetting $klaviyoScopeSetting
     ) {
+        $this->_klaviyoScopeSetting = $klaviyoScopeSetting;
         $this->_klaviyoLogger = $klaviyoLogger;
         $this->_syncCollectionFactory = $syncCollectionFactory;
         $this->_dataHelper = $datahelper;
@@ -146,6 +156,15 @@ class KlSyncs
                         $storeId = '';
                         if (isset($decodedPayload['StoreId'])) {
                             $storeId = $decodedPayload['StoreId'];
+                        }
+
+                        // Klaviyo is disabled for the event's store: the event follows the discard path,
+                        // RETRY, then FAILED if the store is still disabled on retry, followed by cleanup.
+                        // FAILED events are not replayed when Klaviyo is re-enabled; RETRY events are still
+                        // sent if Klaviyo is re-enabled before retry processing.
+                        if (!$this->_klaviyoScopeSetting->isEnabled($storeId === '' ? null : $storeId)) {
+                            $failedRows[] = $row['id'];
+                            continue;
                         }
 
                         $response = $this->_dataHelper->klaviyoTrackEvent(

@@ -58,15 +58,6 @@ class ScopeSettingTest extends TestCase
                         case ScopeSetting::USING_KLAVIYO_LOGGER:
                             return SampleExtension::USING_KLAVIYO_LOGGER;
                             break;
-                        case ScopeSetting::KLAVIYO_USERNAME:
-                            return SampleExtension::KLAVIYO_USERNAME;
-                            break;
-                        case ScopeSetting::KLAVIYO_PASSWORD:
-                            return SampleExtension::KLAVIYO_PASSWORD;
-                            break;
-                        case ScopeSetting::KLAVIYO_EMAIL:
-                            return SampleExtension::KLAVIYO_EMAIL;
-                            break;
                         case ScopeSetting::CUSTOM_MEDIA_URL:
                             return SampleExtension::CUSTOM_MEDIA_URL;
                             break;
@@ -98,32 +89,14 @@ class ScopeSettingTest extends TestCase
         $configWriterMock = $this->createMock(WriterInterface::class);
         $configWriterMock->method('save')
             ->with(
-                $this->logicalOr(
-                    ScopeSetting::PRIVATE_API_KEY,
-                    ScopeSetting::KLAVIYO_USERNAME,
-                    ScopeSetting::KLAVIYO_PASSWORD,
-                    ScopeSetting::KLAVIYO_EMAIL
-                ),
-                $this->logicalOr(
-                    self::NEW_API_KEY,
-                    ScopeSetting::KLAVIYO_NAME_DEFAULT,
-                    ''
-                )
+                ScopeSetting::PRIVATE_API_KEY,
+                self::NEW_API_KEY
             )
             ->will($this->returnCallback(
                 function ($path, $value, $scope, $code) {
                     switch ($path) {
                         case ScopeSetting::PRIVATE_API_KEY:
                             return ($value == self::NEW_API_KEY) ? $value : false;
-                            break;
-                        case ScopeSetting::KLAVIYO_USERNAME:
-                            return ($value == ScopeSetting::KLAVIYO_NAME_DEFAULT) ? $value : false;
-                            break;
-                        case ScopeSetting::KLAVIYO_PASSWORD:
-                            return ($value == '') ? $value : false;
-                            break;
-                        case ScopeSetting::KLAVIYO_EMAIL:
-                            return ($value == '') ? $value : false;
                             break;
                     }
                 }
@@ -173,36 +146,6 @@ class ScopeSettingTest extends TestCase
         $this->assertSame(SampleExtension::USING_KLAVIYO_LOGGER, $this->scopeSetting->isLoggerEnabled());
     }
 
-    public function testGetKlaviyoUsername()
-    {
-        $this->assertSame(SampleExtension::KLAVIYO_USERNAME, $this->scopeSetting->getKlaviyoUsername());
-    }
-
-    public function testUnsetKlaviyoUsername()
-    {
-        $this->assertSame(ScopeSetting::KLAVIYO_NAME_DEFAULT, $this->scopeSetting->unsetKlaviyoUsername());
-    }
-
-    public function testGetKlaviyoPassword()
-    {
-        $this->assertSame(SampleExtension::KLAVIYO_PASSWORD, $this->scopeSetting->getKlaviyoPassword());
-    }
-
-    public function testUnsetKlaviyoPassword()
-    {
-        $this->assertSame('', $this->scopeSetting->unsetKlaviyoPassword());
-    }
-
-    public function testGetKlaviyoEmail()
-    {
-        $this->assertSame(SampleExtension::KLAVIYO_EMAIL, $this->scopeSetting->getKlaviyoEmail());
-    }
-
-    public function testUnsetKlaviyoEmail()
-    {
-        $this->assertSame('', $this->scopeSetting->unsetKlaviyoEmail());
-    }
-
     public function testGetCustomMediaURL()
     {
         $this->assertSame(SampleExtension::CUSTOM_MEDIA_URL, $this->scopeSetting->getCustomMediaURL());
@@ -219,5 +162,102 @@ class ScopeSettingTest extends TestCase
         $this->assertSame(ScopeSetting::API_MEMBERS, $this->scopeSetting->getOptInSetting());
         $this->optinToggle = true;
         $this->assertSame(ScopeSetting::API_SUBSCRIBE, $this->scopeSetting->getOptInSetting());
+    }
+
+    public function testGetConsentAtCheckoutEmailSortOrderForwardsStoreId()
+    {
+        /**
+         * Regression guard: the email sort-order getter must scope by the
+         * requested store id. It previously dropped $storeId and returned the
+         * default-scope value, which gave support misleading checkout settings
+         * for multi-store setups.
+         */
+        $storeId = 42;
+
+        $scopeConfigMock = $this->createMock(ScopeConfigInterface::class);
+        $scopeConfigMock->expects($this->once())
+            ->method('getValue')
+            ->with(
+                ScopeSetting::CONSENT_AT_CHECKOUT_EMAIL_SORT_ORDER,
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+                $storeId
+            )
+            ->willReturn(7);
+
+        $contextMock = $this->createMock(Context::class);
+        $contextMock->method('getScopeConfig')->willReturn($scopeConfigMock);
+        $contextMock->method('getRequest')->willReturn($this->createMock(RequestInterface::class));
+
+        $stateMock = $this->createMock(State::class);
+        $stateMock->method('getAreaCode')
+            ->willReturn(\Magento\Framework\App\Area::AREA_ADMINHTML);
+
+        $storeMock = $this->createMock(StoreInterface::class);
+        $storeMock->method('getId')->willReturn(1);
+        $storeManagerMock = $this->createMock(StoreManagerInterface::class);
+        $storeManagerMock->method('getStore')->willReturn($storeMock);
+
+        $scopeSetting = new ScopeSetting(
+            $contextMock,
+            $stateMock,
+            $storeManagerMock,
+            $this->createMock(ModuleListInterface::class),
+            $this->createMock(WriterInterface::class)
+        );
+
+        $this->assertSame(7, $scopeSetting->getConsentAtCheckoutEmailSortOrder($storeId));
+    }
+
+    public function testSensitiveSettingsCoversEveryEncryptedConfigField()
+    {
+        // ScopeSetting::SENSITIVE_SETTINGS must include every config field declared
+        // with the Encrypted backend model in config.xml. If a new encrypted field
+        // is added without classifying it here, this fails -- so getPluginSettings
+        // (and anything else relying on SENSITIVE_SETTINGS) can't silently leak it.
+        $dom = new \DOMDocument();
+        $dom->load(__DIR__ . '/../../../etc/config.xml');
+        $xpath = new \DOMXPath($dom);
+        $nodes = $xpath->query('//*[contains(@backend_model, "Encrypted")]');
+
+        $encryptedPaths = [];
+        foreach ($nodes as $node) {
+            $field = $node->nodeName;
+            $group = $node->parentNode->nodeName;
+            $section = $node->parentNode->parentNode->nodeName;
+            $encryptedPaths[] = "$section/$group/$field";
+        }
+
+        $this->assertNotEmpty(
+            $encryptedPaths,
+            'Expected to find Encrypted-backed fields in config.xml'
+        );
+        foreach ($encryptedPaths as $path) {
+            $this->assertContains(
+                $path,
+                ScopeSetting::SENSITIVE_SETTINGS,
+                "Encrypted config field '$path' is missing from ScopeSetting::SENSITIVE_SETTINGS"
+            );
+        }
+    }
+
+    public function testGetStoreIdKlaviyoAccountSetMapGroupsStoresWithNoApiKeyUnderEmptyString()
+    {
+        $scopeSetting = $this->getMockBuilder(ScopeSetting::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getPublicApiKey'])
+            ->getMock();
+        $scopeSetting->method('getPublicApiKey')
+            ->willReturnMap([
+                [1, null],
+                [2, SampleExtension::PUBLIC_API_KEY],
+                [3, ''],
+            ]);
+
+        $result = $scopeSetting->getStoreIdKlaviyoAccountSetMap([1, 2, 3]);
+
+        $this->assertSame([
+            '' => [1, 3],
+            SampleExtension::PUBLIC_API_KEY => [2],
+        ], $result);
     }
 }
