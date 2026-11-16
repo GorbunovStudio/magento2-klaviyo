@@ -46,7 +46,6 @@ class NewsletterSubscribeObserver implements ObserverInterface
         CustomerRepositoryInterface $customerRepository,
         ManagerInterface $eventManager,
         PropertiesInterfaceFactory $propertiesFactory
-
     ) {
         $this->helper = $helper;
         $this->scopeSetting = $scopeSetting;
@@ -57,13 +56,13 @@ class NewsletterSubscribeObserver implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        if (!$this->scopeSetting->isEnabled()) {
+        /** @var Subscriber $subscriber */
+        $subscriber = $observer->getDataObject();
+        if (!$subscriber || !$this->scopeSetting->isEnabled($subscriber->getStoreId())) {
             return;
         }
 
-        /** @var Subscriber $subscriber */
-        $subscriber = $observer->getDataObject();
-        if ($subscriber && ($subscriber->isStatusChanged() || $subscriber->isObjectNew())) {
+        if ($subscriber->isStatusChanged() || $subscriber->isObjectNew()) {
             $subscriptionStatus = $subscriber->getStatus();
             $customer = $this->getCustomer($subscriber);
 
@@ -77,7 +76,7 @@ class NewsletterSubscribeObserver implements ObserverInterface
                     'properties' => $properties
                 ]
             );
-            
+
             if ($subscriber->getId() && $subscriptionStatus === Subscriber::STATUS_SUBSCRIBED) {
                 $customProperties = $properties->getData('properties');
                 $this->helper->subscribeEmailToKlaviyoList(

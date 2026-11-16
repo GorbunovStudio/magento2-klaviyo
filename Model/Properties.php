@@ -6,6 +6,6 @@ namespace Klaviyo\Reclaim\Model;
 
 use Magento\Framework\DataObject;
 
-class Properties extends DataObject 
+class Properties extends DataObject
 {
 }

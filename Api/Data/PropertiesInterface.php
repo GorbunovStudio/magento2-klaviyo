@@ -6,6 +6,4 @@ namespace Klaviyo\Reclaim\Api\Data;
 
 interface PropertiesInterface
 {
-    
 }
-
