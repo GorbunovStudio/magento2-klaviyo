@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../../../Backend/Block/Template.php';
 require_once __DIR__ . '/../../../../../Backend/Block/Template/Context.php';
 require_once __DIR__ . '/../../../../../Framework/Data/Form/Element/Renderer/RendererInterface.php';
 
-if (!class_exists(\Magento\Config\Block\System\Config\Form\Field::class, false)) {
+if (!class_exists(\Magento\Config\Block\System\Config\Form\Field::class)) {
     class Field extends \Magento\Backend\Block\Template implements
         \Magento\Framework\Data\Form\Element\Renderer\RendererInterface
     {

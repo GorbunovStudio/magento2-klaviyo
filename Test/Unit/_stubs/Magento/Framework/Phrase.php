@@ -2,7 +2,7 @@
 
 namespace Magento\Framework;
 
-if (!class_exists(\Magento\Framework\Phrase::class, false)) {
+if (!class_exists(\Magento\Framework\Phrase::class)) {
     class Phrase
     {
         private $text;

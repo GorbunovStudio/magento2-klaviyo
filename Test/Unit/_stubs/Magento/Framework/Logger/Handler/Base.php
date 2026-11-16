@@ -7,7 +7,7 @@ use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
-if (!class_exists(\Magento\Framework\Logger\Handler\Base::class, false)) {
+if (!class_exists(\Magento\Framework\Logger\Handler\Base::class)) {
     class Base extends StreamHandler
     {
         protected $fileName = '';

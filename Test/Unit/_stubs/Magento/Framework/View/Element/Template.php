@@ -5,7 +5,7 @@ namespace Magento\Framework\View\Element;
 require_once __DIR__ . '/AbstractBlock.php';
 require_once __DIR__ . '/Template/Context.php';
 
-if (!class_exists(\Magento\Framework\View\Element\Template::class, false)) {
+if (!class_exists(\Magento\Framework\View\Element\Template::class)) {
     class Template extends AbstractBlock
     {
         protected $_storeManager;

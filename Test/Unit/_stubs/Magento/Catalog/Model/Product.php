@@ -2,7 +2,7 @@
 
 namespace Magento\Catalog\Model;
 
-if (!class_exists(\Magento\Catalog\Model\Product::class, false)) {
+if (!class_exists(\Magento\Catalog\Model\Product::class)) {
     class Product
     {
         public function getId()

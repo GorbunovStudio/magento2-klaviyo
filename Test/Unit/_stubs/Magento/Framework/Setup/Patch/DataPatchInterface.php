@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Setup\Patch;
 
-if (!interface_exists(\Magento\Framework\Setup\Patch\DataPatchInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\Setup\Patch\DataPatchInterface::class)) {
     interface DataPatchInterface
     {
         public function apply();

@@ -2,7 +2,7 @@
 
 namespace Magento\Framework;
 
-if (!class_exists(\Magento\Framework\DataObject::class, false)) {
+if (!class_exists(\Magento\Framework\DataObject::class)) {
     class DataObject implements \ArrayAccess
     {
         protected $_data = [];

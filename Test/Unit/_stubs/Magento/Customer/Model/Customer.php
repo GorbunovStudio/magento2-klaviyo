@@ -2,7 +2,7 @@
 
 namespace Magento\Customer\Model;
 
-if (!class_exists(\Magento\Customer\Model\Customer::class, false)) {
+if (!class_exists(\Magento\Customer\Model\Customer::class)) {
     class Customer
     {
         public function getData(): array

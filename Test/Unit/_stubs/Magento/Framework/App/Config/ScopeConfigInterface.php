@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\App\Config;
 
-if (!interface_exists(\Magento\Framework\App\Config\ScopeConfigInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\App\Config\ScopeConfigInterface::class)) {
     interface ScopeConfigInterface
     {
         const SCOPE_TYPE_DEFAULT = 'default';

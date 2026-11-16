@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\App;
 
-if (!class_exists(\Magento\Framework\App\State::class, false)) {
+if (!class_exists(\Magento\Framework\App\State::class)) {
     class State
     {
         protected $areaCode;

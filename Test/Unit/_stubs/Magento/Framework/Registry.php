@@ -2,7 +2,7 @@
 
 namespace Magento\Framework;
 
-if (!class_exists(\Magento\Framework\Registry::class, false)) {
+if (!class_exists(\Magento\Framework\Registry::class)) {
     class Registry
     {
         protected $registry = [];

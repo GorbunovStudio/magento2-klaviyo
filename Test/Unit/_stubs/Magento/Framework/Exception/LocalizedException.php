@@ -4,7 +4,7 @@ namespace Magento\Framework\Exception;
 
 require_once __DIR__ . '/../Phrase.php';
 
-if (!class_exists(\Magento\Framework\Exception\LocalizedException::class, false)) {
+if (!class_exists(\Magento\Framework\Exception\LocalizedException::class)) {
     class LocalizedException extends \Exception
     {
         private $phrase;

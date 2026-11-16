@@ -2,7 +2,7 @@
 
 namespace Magento\Newsletter\Model;
 
-if (!class_exists(\Magento\Newsletter\Model\Subscriber::class, false)) {
+if (!class_exists(\Magento\Newsletter\Model\Subscriber::class)) {
     class Subscriber
     {
         public const STATUS_SUBSCRIBED = 1;

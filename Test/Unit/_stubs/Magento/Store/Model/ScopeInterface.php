@@ -2,7 +2,7 @@
 
 namespace Magento\Store\Model;
 
-if (!interface_exists(\Magento\Store\Model\ScopeInterface::class, false)) {
+if (!interface_exists(\Magento\Store\Model\ScopeInterface::class)) {
     interface ScopeInterface
     {
         const SCOPE_STORES = 'stores';

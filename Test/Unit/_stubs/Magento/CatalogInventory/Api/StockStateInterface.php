@@ -2,7 +2,7 @@
 
 namespace Magento\CatalogInventory\Api;
 
-if (!interface_exists(\Magento\CatalogInventory\Api\StockStateInterface::class, false)) {
+if (!interface_exists(\Magento\CatalogInventory\Api\StockStateInterface::class)) {
     interface StockStateInterface
     {
         public function verifyStock($productId, $scopeId = null);

@@ -2,7 +2,7 @@
 
 namespace Magento\Store\Model;
 
-if (!interface_exists(\Magento\Store\Model\StoreManagerInterface::class, false)) {
+if (!interface_exists(\Magento\Store\Model\StoreManagerInterface::class)) {
     interface StoreManagerInterface
     {
         public function setIsSingleStoreModeAllowed($value);

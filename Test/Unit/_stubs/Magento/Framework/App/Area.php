@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\App;
 
-if (!class_exists(\Magento\Framework\App\Area::class, false)) {
+if (!class_exists(\Magento\Framework\App\Area::class)) {
     class Area
     {
         const AREA_GLOBAL = 'global';

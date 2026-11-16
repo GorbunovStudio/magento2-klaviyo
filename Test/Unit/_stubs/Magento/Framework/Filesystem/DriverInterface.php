@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Filesystem;
 
-if (!interface_exists(\Magento\Framework\Filesystem\DriverInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\Filesystem\DriverInterface::class)) {
     interface DriverInterface
     {
         public function isExists($path);

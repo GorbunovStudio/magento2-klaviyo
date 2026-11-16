@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\App\Helper;
 
-if (!class_exists(\Magento\Framework\App\Helper\Context::class, false)) {
+if (!class_exists(\Magento\Framework\App\Helper\Context::class)) {
     class Context
     {
         public function getModuleManager()

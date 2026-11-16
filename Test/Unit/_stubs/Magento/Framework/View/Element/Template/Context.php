@@ -4,7 +4,7 @@ namespace Magento\Framework\View\Element\Template;
 
 require_once __DIR__ . '/../Context.php';
 
-if (!class_exists(\Magento\Framework\View\Element\Template\Context::class, false)) {
+if (!class_exists(\Magento\Framework\View\Element\Template\Context::class)) {
     class Context extends \Magento\Framework\View\Element\Context
     {
         public function getResolver()

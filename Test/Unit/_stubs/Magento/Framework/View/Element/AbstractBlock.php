@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../DataObject.php';
 require_once __DIR__ . '/BlockInterface.php';
 require_once __DIR__ . '/Context.php';
 
-if (!class_exists(\Magento\Framework\View\Element\AbstractBlock::class, false)) {
+if (!class_exists(\Magento\Framework\View\Element\AbstractBlock::class)) {
     abstract class AbstractBlock extends \Magento\Framework\DataObject implements BlockInterface
     {
         protected $_request;

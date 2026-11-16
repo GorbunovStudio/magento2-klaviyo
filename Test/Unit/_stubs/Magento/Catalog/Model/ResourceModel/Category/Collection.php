@@ -2,7 +2,7 @@
 
 namespace Magento\Catalog\Model\ResourceModel\Category;
 
-if (!class_exists(\Magento\Catalog\Model\ResourceModel\Category\Collection::class, false)) {
+if (!class_exists(\Magento\Catalog\Model\ResourceModel\Category\Collection::class)) {
     class Collection
     {
         public function addAttributeToSelect($attribute)

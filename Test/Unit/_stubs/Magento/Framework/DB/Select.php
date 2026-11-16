@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\DB;
 
-if (!class_exists(\Magento\Framework\DB\Select::class, false)) {
+if (!class_exists(\Magento\Framework\DB\Select::class)) {
     class Select
     {
         public function from($table, $cols = '*')

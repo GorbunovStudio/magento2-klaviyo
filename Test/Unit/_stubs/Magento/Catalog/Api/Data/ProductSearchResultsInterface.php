@@ -2,7 +2,7 @@
 
 namespace Magento\Catalog\Api\Data;
 
-if (!interface_exists(\Magento\Catalog\Api\Data\ProductSearchResultsInterface::class, false)) {
+if (!interface_exists(\Magento\Catalog\Api\Data\ProductSearchResultsInterface::class)) {
     interface ProductSearchResultsInterface
     {
         public function getItems();

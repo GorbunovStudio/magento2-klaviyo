@@ -2,7 +2,7 @@
 
 namespace Magento\Customer\Helper\Session;
 
-if (!class_exists(\Magento\Customer\Helper\Session\CurrentCustomer::class, false)) {
+if (!class_exists(\Magento\Customer\Helper\Session\CurrentCustomer::class)) {
     class CurrentCustomer
     {
         public function getCustomer()

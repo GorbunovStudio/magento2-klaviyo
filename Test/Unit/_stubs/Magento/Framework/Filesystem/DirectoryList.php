@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Filesystem;
 
-if (!class_exists(\Magento\Framework\Filesystem\DirectoryList::class, false)) {
+if (!class_exists(\Magento\Framework\Filesystem\DirectoryList::class)) {
     class DirectoryList
     {
         public function __construct($root, array $config = [])

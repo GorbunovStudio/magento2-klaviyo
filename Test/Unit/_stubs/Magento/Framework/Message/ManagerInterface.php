@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Message;
 
-if (!interface_exists(\Magento\Framework\Message\ManagerInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\Message\ManagerInterface::class)) {
     interface ManagerInterface
     {
         public function getMessages($clear = false, $group = null);

@@ -2,7 +2,7 @@
 
 namespace Magento\Store\Api\Data;
 
-if (!interface_exists(\Magento\Store\Api\Data\StoreInterface::class, false)) {
+if (!interface_exists(\Magento\Store\Api\Data\StoreInterface::class)) {
     interface StoreInterface
     {
         public function getId();

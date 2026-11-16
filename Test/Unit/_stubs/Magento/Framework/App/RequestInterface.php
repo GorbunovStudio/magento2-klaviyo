@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\App;
 
-if (!interface_exists(\Magento\Framework\App\RequestInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\App\RequestInterface::class)) {
     interface RequestInterface
     {
         public function getModuleName();

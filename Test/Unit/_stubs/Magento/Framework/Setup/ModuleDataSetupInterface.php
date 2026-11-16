@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Setup;
 
-if (!interface_exists(\Magento\Framework\Setup\ModuleDataSetupInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\Setup\ModuleDataSetupInterface::class)) {
     interface ModuleDataSetupInterface
     {
         public function getConnection();

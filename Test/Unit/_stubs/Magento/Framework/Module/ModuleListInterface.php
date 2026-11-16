@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\Module;
 
-if (!interface_exists(\Magento\Framework\Module\ModuleListInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\Module\ModuleListInterface::class)) {
     interface ModuleListInterface
     {
         public function getAll();

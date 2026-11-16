@@ -6,9 +6,11 @@
  * Loads composer's autoloader first, then pre-loads every stub file under
  * Test/Unit/_stubs/. The stubs declare stand-in classes/interfaces for
  * Magento framework symbols that aren't installed in the local test
- * environment, each guarded by class_exists/interface_exists/function_exists
- * with $autoload=false so they no-op when the real Magento autoloader is
- * present (e.g. inside the docker container).
+ * environment. Each class/interface stub is guarded by class_exists() or
+ * interface_exists() with autoloading enabled, so when the real Magento
+ * class can be autoloaded (e.g. the suite runs inside a Magento install) the
+ * real class is loaded and the stub is skipped. Function stubs use
+ * function_exists(), which cannot autoload.
  *
  * Stubs live one-class-per-file in a directory tree mirroring their
  * namespace, so PSR1.Classes.ClassDeclaration.MultipleClasses doesn't

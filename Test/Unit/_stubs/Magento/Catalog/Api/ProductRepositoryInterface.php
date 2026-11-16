@@ -2,7 +2,7 @@
 
 namespace Magento\Catalog\Api;
 
-if (!interface_exists(\Magento\Catalog\Api\ProductRepositoryInterface::class, false)) {
+if (!interface_exists(\Magento\Catalog\Api\ProductRepositoryInterface::class)) {
     interface ProductRepositoryInterface
     {
         public function get($sku, $editMode = false, $storeId = null, $forceReload = false);

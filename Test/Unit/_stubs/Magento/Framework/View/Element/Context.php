@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\View\Element;
 
-if (!class_exists(\Magento\Framework\View\Element\Context::class, false)) {
+if (!class_exists(\Magento\Framework\View\Element\Context::class)) {
     class Context
     {
         public function getRequest()

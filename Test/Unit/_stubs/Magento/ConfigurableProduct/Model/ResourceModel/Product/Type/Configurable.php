@@ -2,7 +2,7 @@
 
 namespace Magento\ConfigurableProduct\Model\ResourceModel\Product\Type;
 
-if (!class_exists(\Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable::class, false)) {
+if (!class_exists(\Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable::class)) {
     class Configurable
     {
         public function getParentIdsByChild($childId)

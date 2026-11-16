@@ -2,7 +2,7 @@
 
 namespace Magento\Customer\Api\Data;
 
-if (!interface_exists(\Magento\Customer\Api\Data\CustomerInterface::class, false)) {
+if (!interface_exists(\Magento\Customer\Api\Data\CustomerInterface::class)) {
     interface CustomerInterface
     {
         public function getId();

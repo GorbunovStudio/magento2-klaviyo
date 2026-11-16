@@ -2,7 +2,7 @@
 
 namespace Klaviyo\Reclaim\Api\Data;
 
-if (!class_exists(\Klaviyo\Reclaim\Api\Data\PropertiesInterfaceFactory::class, false)) {
+if (!class_exists(\Klaviyo\Reclaim\Api\Data\PropertiesInterfaceFactory::class)) {
     class PropertiesInterfaceFactory
     {
         public function create(array $data = [])

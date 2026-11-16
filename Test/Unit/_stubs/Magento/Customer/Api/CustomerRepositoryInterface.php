@@ -2,7 +2,7 @@
 
 namespace Magento\Customer\Api;
 
-if (!interface_exists(\Magento\Customer\Api\CustomerRepositoryInterface::class, false)) {
+if (!interface_exists(\Magento\Customer\Api\CustomerRepositoryInterface::class)) {
     interface CustomerRepositoryInterface
     {
         public function save(\Magento\Customer\Api\Data\CustomerInterface $customer, $passwordHash = null);

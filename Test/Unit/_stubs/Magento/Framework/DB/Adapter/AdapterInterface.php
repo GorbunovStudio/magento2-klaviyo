@@ -2,7 +2,7 @@
 
 namespace Magento\Framework\DB\Adapter;
 
-if (!interface_exists(\Magento\Framework\DB\Adapter\AdapterInterface::class, false)) {
+if (!interface_exists(\Magento\Framework\DB\Adapter\AdapterInterface::class)) {
     interface AdapterInterface
     {
         public function startSetup();

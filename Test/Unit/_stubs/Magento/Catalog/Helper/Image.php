@@ -2,7 +2,7 @@
 
 namespace Magento\Catalog\Helper;
 
-if (!class_exists(\Magento\Catalog\Helper\Image::class, false)) {
+if (!class_exists(\Magento\Catalog\Helper\Image::class)) {
     class Image
     {
         public function init($product, $imageId, $attributes = [])
