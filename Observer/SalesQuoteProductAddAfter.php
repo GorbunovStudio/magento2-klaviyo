@@ -4,6 +4,7 @@ namespace Klaviyo\Reclaim\Observer;
 
 use Klaviyo\Reclaim\Helper\Data;
 use Klaviyo\Reclaim\Helper\Logger;
+use Klaviyo\Reclaim\Helper\ScopeSetting;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Catalog\Helper\Image;
@@ -39,6 +40,12 @@ class SalesQuoteProductAddAfter implements ObserverInterface
 
     private $logger;
 
+    /**
+     * Klaviyo Scope Setting
+     * @var ScopeSetting
+     */
+    private $scopeSetting;
+
     private const IMAGE_PRIORITY = [
         'small_image',
         'image',
@@ -54,8 +61,10 @@ class SalesQuoteProductAddAfter implements ObserverInterface
         CategoryFactory $categoryFactory,
         ProductRepositoryInterface $productRepository,
         Image $imageHelper,
-        Logger $logger
+        Logger $logger,
+        ScopeSetting $scopeSetting
     ) {
+        $this->scopeSetting = $scopeSetting;
         $this->_dataHelper = $dataHelper;
         $this->_categoryFactory = $categoryFactory;
         $this->productRepository = $productRepository;
@@ -67,6 +76,9 @@ class SalesQuoteProductAddAfter implements ObserverInterface
     {
         $addedItems = $observer->getData('items');
         $quote = $addedItems[0]->getQuote();
+        if (!$this->scopeSetting->isEnabled($quote->getStoreId())) {
+            return;
+        }
 
         // Create a list of Simple Product Ids being added as part of a bundle.
         // We collect the Item name and Qty added to cart, to be sent as AddedItemBundleOptions with the payload.

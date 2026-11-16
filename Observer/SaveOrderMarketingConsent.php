@@ -72,6 +72,10 @@ class SaveOrderMarketingConsent implements ObserverInterface
         $order->setData('kl_email_consent', json_encode($quote->getKlEmailConsent()));
 
         $storeId = $quote->getStoreId();
+        if (!$this->_klaviyoScopeSetting->isEnabled($storeId)) {
+            return $this;
+        }
+
         $email = $quote->getCustomerEmail();
 
         if ($quote->getKlEmailConsent() && $this->_klaviyoScopeSetting->getConsentAtCheckoutEmailIsActive($storeId)) {

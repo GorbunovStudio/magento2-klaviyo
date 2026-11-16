@@ -27,11 +27,12 @@ class SaveOrderMarketingConsentTest extends TestCase
         return new StubObserver($event);
     }
 
-    private function makeScopeMock($mobileActive, $emailActive, array $channels)
+    private function makeScopeMock($mobileActive, $emailActive, array $channels, $klaviyoEnabled = true)
     {
         $mock = $this->getMockBuilder(ScopeSetting::class)
             ->disableOriginalConstructor()
             ->getMock();
+        $mock->method('isEnabled')->willReturn($klaviyoEnabled ? '1' : '0');
         $mock->method('getMobileConsentIsActive')->willReturn($mobileActive ? '1' : null);
         $mock->method('getConsentAtCheckoutEmailIsActive')->willReturn($emailActive ? '1' : null);
         $mock->method('getMobileConsentListId')->willReturn('mobile-list-id');
@@ -307,5 +308,20 @@ class SaveOrderMarketingConsentTest extends TestCase
         $subs2 = $calls[1]['profiles'][0]['attributes']['subscriptions'];
         $this->assertArrayHasKey('sms', $subs1, 'First call should target sms (the one that throws)');
         $this->assertArrayHasKey('whatsapp', $subs2, 'Second call should still target whatsapp despite first failure');
+    }
+
+    public function test_klaviyo_disabled_makes_no_api_calls_but_keeps_order_consent()
+    {
+        $scope = $this->makeScopeMock(true, true, ['sms', 'whatsapp'], false);
+        $api = $this->makeApiMock();
+        $api->expects($this->never())->method('subscribeMembersToList');
+        $magentoObserver = $this->makeMagentoObserver('1', '1');
+
+        $observer = new TestableSaveOrderMarketingConsent($this->makeLoggerMock(), $scope, new PhoneFormatter(), $api);
+        $observer->execute($magentoObserver);
+
+        $order = $magentoObserver->getEvent()->getOrder();
+        $this->assertSame(json_encode('1'), $order->data['kl_sms_consent']);
+        $this->assertSame(json_encode('1'), $order->data['kl_email_consent']);
     }
 }
