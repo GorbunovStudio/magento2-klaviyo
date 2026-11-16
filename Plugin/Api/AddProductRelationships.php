@@ -7,6 +7,7 @@ use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\Data\ProductSearchResultsInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Store\Model\StoreManagerInterface;
 
 class AddProductRelationships
 {
@@ -17,60 +18,76 @@ class AddProductRelationships
      */
     protected $klaviyoScopeSetting;
 
+    /**
+     * @var StoreManagerInterface
+     */
+    protected $storeManager;
+
     public function __construct(
         Configurable $configurableProductType,
-        ScopeSetting $klaviyoScopeSetting
+        ScopeSetting $klaviyoScopeSetting,
+        StoreManagerInterface $storeManager
     ) {
         $this->configurableProductType = $configurableProductType;
         $this->klaviyoScopeSetting = $klaviyoScopeSetting;
+        $this->storeManager = $storeManager;
     }
 
     public function afterGet(
         ProductRepositoryInterface $subject,
-        ProductInterface $entity
+        ProductInterface $result,
+        $sku,
+        $editMode = false,
+        $storeId = null,
+        $forceReload = false
     ) {
-        if (!$this->klaviyoScopeSetting->isEnabled($entity->getStoreId())) {
-            return $entity;
+        if (!$this->isEnabledForStore($storeId)) {
+            return $result;
         }
 
-        $this->addParentIds($entity);
+        $this->addParentIds($result);
 
-        return $entity;
+        return $result;
     }
 
     public function afterGetList(
         ProductRepositoryInterface $subject,
         ProductSearchResultsInterface $searchResults
     ) {
-        $enabledByStore = [];
+        if (!$this->isEnabledForStore(null)) {
+            return $searchResults;
+        }
+
         $products = [];
-        $isChanged = false;
-        foreach ($searchResults->getItems() as $key => $entity) {
-            $storeId = $entity->getStoreId();
-            if (!array_key_exists($storeId, $enabledByStore)) {
-                $enabledByStore[$storeId] = (bool) $this->klaviyoScopeSetting->isEnabled($storeId);
-            }
-
-            if ($enabledByStore[$storeId]) {
-                $this->addParentIds($entity);
-                $isChanged = true;
-            }
-
-            $products[$key] = $entity;
+        foreach ($searchResults->getItems() as $entity) {
+            $this->addParentIds($entity);
+            $products[] = $entity;
         }
-
-        if ($isChanged) {
-            $searchResults->setItems(array_values($products));
-        }
+        $searchResults->setItems($products);
 
         return $searchResults;
+    }
+
+    /**
+     * Checks the Klaviyo enable flag for the given store, or for the store of the current request
+     *
+     * @param int|string|null $storeId
+     * @return bool
+     */
+    private function isEnabledForStore($storeId)
+    {
+        if ($storeId === null) {
+            $storeId = $this->storeManager->getStore()->getId();
+        }
+
+        return (bool) $this->klaviyoScopeSetting->isEnabled($storeId);
     }
 
     private function addParentIds(ProductInterface $entity)
     {
         $extensionAttributes = $entity->getExtensionAttributes();
         $parentIds = $this->configurableProductType->getParentIdsByChild($entity->getId());
-        $extensionAttributes->setData('kl_parent_ids', $parentIds);
+        $extensionAttributes->setKlParentIds($parentIds);
         $entity->setExtensionAttributes($extensionAttributes);
     }
 }

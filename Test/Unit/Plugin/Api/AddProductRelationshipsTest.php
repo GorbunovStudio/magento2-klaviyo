@@ -4,105 +4,139 @@ namespace Klaviyo\Reclaim\Test\Unit\Plugin\Api;
 
 use Klaviyo\Reclaim\Helper\ScopeSetting;
 use Klaviyo\Reclaim\Plugin\Api\AddProductRelationships;
+use Magento\Catalog\Api\Data\ProductExtensionInterface;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\Data\ProductSearchResultsInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable;
-use Magento\Framework\DataObject;
+use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\TestCase;
 
 class AddProductRelationshipsTest extends TestCase
 {
-    private function makeScope(array $enabledByStore)
+    private const CURRENT_STORE_ID = 1;
+
+    private function makeStoreManager()
+    {
+        $store = $this->createMock(StoreInterface::class);
+        $store->method('getId')->willReturn(self::CURRENT_STORE_ID);
+        $storeManager = $this->createMock(StoreManagerInterface::class);
+        $storeManager->method('getStore')->willReturn($store);
+
+        return $storeManager;
+    }
+
+    private function makeScope($expectedStoreId, $enabled)
     {
         $scope = $this->getMockBuilder(ScopeSetting::class)
             ->disableOriginalConstructor()
             ->getMock();
-        $scope->method('isEnabled')->willReturnCallback(
-            function ($storeId) use ($enabledByStore) {
-                return $enabledByStore[$storeId] ?? null;
-            }
-        );
+        $scope->expects($this->once())
+            ->method('isEnabled')
+            ->with($expectedStoreId)
+            ->willReturn($enabled ? '1' : '0');
 
         return $scope;
     }
 
-    private function makeProduct(int $id, int $storeId, DataObject $extensionAttributes)
+    private function makeProduct(int $id, ProductExtensionInterface $extensionAttributes)
     {
         $product = $this->createMock(ProductInterface::class);
         $product->method('getId')->willReturn($id);
-        $product->method('getStoreId')->willReturn($storeId);
         $product->method('getExtensionAttributes')->willReturn($extensionAttributes);
 
         return $product;
     }
 
-    public function testGetDoesNotQueryParentsWhenKlaviyoIsDisabled()
+    public function testGetListLeavesResultsUntouchedWhenKlaviyoIsDisabledForCurrentStore()
     {
         $configurable = $this->createMock(Configurable::class);
         $configurable->expects($this->never())->method('getParentIdsByChild');
-        $extensionAttributes = new DataObject();
-        $product = $this->makeProduct(10, 1, $extensionAttributes);
-
-        $plugin = new AddProductRelationships($configurable, $this->makeScope([1 => '0']));
-        $result = $plugin->afterGet($this->createMock(ProductRepositoryInterface::class), $product);
-
-        $this->assertSame($product, $result);
-        $this->assertNull($extensionAttributes->getData('kl_parent_ids'));
-    }
-
-    public function testGetAddsParentIdsWhenKlaviyoIsEnabled()
-    {
-        $configurable = $this->createMock(Configurable::class);
-        $configurable->expects($this->once())->method('getParentIdsByChild')->with(10)->willReturn([5]);
-        $extensionAttributes = new DataObject();
-        $product = $this->makeProduct(10, 1, $extensionAttributes);
-
-        $plugin = new AddProductRelationships($configurable, $this->makeScope([1 => '1']));
-        $plugin->afterGet($this->createMock(ProductRepositoryInterface::class), $product);
-
-        $this->assertSame([5], $extensionAttributes->getData('kl_parent_ids'));
-    }
-
-    public function testGetListLeavesResultsUntouchedWhenKlaviyoIsDisabled()
-    {
-        $configurable = $this->createMock(Configurable::class);
-        $configurable->expects($this->never())->method('getParentIdsByChild');
-        $scope = $this->getMockBuilder(ScopeSetting::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-        $scope->expects($this->once())->method('isEnabled')->with(1)->willReturn('0');
+        $extensionAttributes = $this->createMock(ProductExtensionInterface::class);
+        $extensionAttributes->expects($this->never())->method('setKlParentIds');
 
         $searchResults = $this->createMock(ProductSearchResultsInterface::class);
-        $searchResults->method('getItems')->willReturn([
-            $this->makeProduct(10, 1, new DataObject()),
-            $this->makeProduct(11, 1, new DataObject()),
-        ]);
+        $searchResults->expects($this->never())->method('getItems');
         $searchResults->expects($this->never())->method('setItems');
 
-        $plugin = new AddProductRelationships($configurable, $scope);
+        $plugin = new AddProductRelationships(
+            $configurable,
+            $this->makeScope(self::CURRENT_STORE_ID, false),
+            $this->makeStoreManager()
+        );
         $result = $plugin->afterGetList($this->createMock(ProductRepositoryInterface::class), $searchResults);
 
         $this->assertSame($searchResults, $result);
     }
 
-    public function testGetListAddsParentIdsOnlyForEnabledStores()
+    public function testGetListAddsParentIdsWhenKlaviyoIsEnabledForCurrentStore()
     {
         $configurable = $this->createMock(Configurable::class);
-        $configurable->expects($this->once())->method('getParentIdsByChild')->with(11)->willReturn([7]);
-        $disabledAttributes = new DataObject();
-        $enabledAttributes = new DataObject();
-        $disabledProduct = $this->makeProduct(10, 1, $disabledAttributes);
-        $enabledProduct = $this->makeProduct(11, 2, $enabledAttributes);
+        $configurable->method('getParentIdsByChild')->willReturnMap([[10, [5]], [11, [7, 8]]]);
+        $firstAttributes = $this->createMock(ProductExtensionInterface::class);
+        $firstAttributes->expects($this->once())->method('setKlParentIds')->with([5]);
+        $secondAttributes = $this->createMock(ProductExtensionInterface::class);
+        $secondAttributes->expects($this->once())->method('setKlParentIds')->with([7, 8]);
+        $firstProduct = $this->makeProduct(10, $firstAttributes);
+        $secondProduct = $this->makeProduct(11, $secondAttributes);
 
         $searchResults = $this->createMock(ProductSearchResultsInterface::class);
-        $searchResults->method('getItems')->willReturn([$disabledProduct, $enabledProduct]);
-        $searchResults->expects($this->once())->method('setItems')->with([$disabledProduct, $enabledProduct]);
+        $searchResults->method('getItems')->willReturn([$firstProduct, $secondProduct]);
+        $searchResults->expects($this->once())->method('setItems')->with([$firstProduct, $secondProduct]);
 
-        $plugin = new AddProductRelationships($configurable, $this->makeScope([1 => '0', 2 => '1']));
+        $plugin = new AddProductRelationships(
+            $configurable,
+            $this->makeScope(self::CURRENT_STORE_ID, true),
+            $this->makeStoreManager()
+        );
         $plugin->afterGetList($this->createMock(ProductRepositoryInterface::class), $searchResults);
+    }
 
-        $this->assertNull($disabledAttributes->getData('kl_parent_ids'));
-        $this->assertSame([7], $enabledAttributes->getData('kl_parent_ids'));
+    public function testGetDoesNotQueryParentsWhenKlaviyoIsDisabledForCurrentStore()
+    {
+        $configurable = $this->createMock(Configurable::class);
+        $configurable->expects($this->never())->method('getParentIdsByChild');
+        $extensionAttributes = $this->createMock(ProductExtensionInterface::class);
+        $extensionAttributes->expects($this->never())->method('setKlParentIds');
+        $product = $this->makeProduct(10, $extensionAttributes);
+
+        $plugin = new AddProductRelationships(
+            $configurable,
+            $this->makeScope(self::CURRENT_STORE_ID, false),
+            $this->makeStoreManager()
+        );
+        $result = $plugin->afterGet($this->createMock(ProductRepositoryInterface::class), $product, 'sku-10');
+
+        $this->assertSame($product, $result);
+    }
+
+    public function testGetAddsParentIdsWhenKlaviyoIsEnabledForCurrentStore()
+    {
+        $configurable = $this->createMock(Configurable::class);
+        $configurable->expects($this->once())->method('getParentIdsByChild')->with(10)->willReturn([5]);
+        $extensionAttributes = $this->createMock(ProductExtensionInterface::class);
+        $extensionAttributes->expects($this->once())->method('setKlParentIds')->with([5]);
+        $product = $this->makeProduct(10, $extensionAttributes);
+        $product->expects($this->once())->method('setExtensionAttributes')->with($extensionAttributes);
+
+        $plugin = new AddProductRelationships(
+            $configurable,
+            $this->makeScope(self::CURRENT_STORE_ID, true),
+            $this->makeStoreManager()
+        );
+        $plugin->afterGet($this->createMock(ProductRepositoryInterface::class), $product, 'sku-10');
+    }
+
+    public function testGetUsesExplicitStoreIdInsteadOfCurrentStore()
+    {
+        $configurable = $this->createMock(Configurable::class);
+        $configurable->expects($this->never())->method('getParentIdsByChild');
+        $product = $this->makeProduct(10, $this->createMock(ProductExtensionInterface::class));
+        $storeManager = $this->createMock(StoreManagerInterface::class);
+        $storeManager->expects($this->never())->method('getStore');
+
+        $plugin = new AddProductRelationships($configurable, $this->makeScope(4, false), $storeManager);
+        $plugin->afterGet($this->createMock(ProductRepositoryInterface::class), $product, 'sku-10', false, 4);
     }
 }
