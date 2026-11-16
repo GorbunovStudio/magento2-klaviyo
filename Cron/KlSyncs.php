@@ -158,7 +158,9 @@ class KlSyncs
                             $storeId = $decodedPayload['StoreId'];
                         }
 
-                        // Klaviyo is disabled for the event's store: do not send, let the row expire as failed
+                        // Klaviyo is disabled for the event's store: the event is discarded. The row goes
+                        // through the failure path (RETRY, then FAILED) and is cleaned up; it is not resent
+                        // when Klaviyo is re-enabled for the store.
                         if (!$this->_klaviyoScopeSetting->isEnabled($storeId === '' ? null : $storeId)) {
                             $failedRows[] = $row['id'];
                             continue;
