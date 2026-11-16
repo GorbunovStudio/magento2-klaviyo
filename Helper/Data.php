@@ -111,7 +111,7 @@ class Data extends AbstractHelper
      * @param string|null $firstName
      * @param string|null $lastName
      * @param int|null $storeId
-     * @param array|null $properties 
+     * @param array|null $properties
      * @param string|null $listId
      * @return array|false|null|string
      */
@@ -128,7 +128,7 @@ class Data extends AbstractHelper
         if ($lastName) {
             $profileData['last_name'] = $lastName;
         }
-        if ($properties && is_array($properties) && !empty($properties)) {
+        if ($this->hasCustomProperties($properties)) {
             $profileData['properties'] = $properties;
         }
 
@@ -151,7 +151,7 @@ class Data extends AbstractHelper
                     )
                 );
                 $api->subscribeMembersToList($resolvedListId, array($consent_profile_object));
-                if ($properties && is_array($properties) && !empty($properties)) {
+                if ($this->hasCustomProperties($properties)) {
                     $profile = $api->searchProfileByEmail($email);
                     if ($profile && !empty($profile['profile_id'])) {
                         $api->updateProfile($profile['profile_id'], $firstName, $lastName, $properties);
@@ -174,6 +174,7 @@ class Data extends AbstractHelper
                                 $duplicate_profile_id
                             ));
                             $api->addProfileToList($resolvedListId, $duplicate_profile_id);
+                            $this->updateCustomProperties($api, $duplicate_profile_id, $firstName, $lastName, $properties);
                         } else {
                             // 409 without a duplicate_profile_id is unexpected — fall back to search.
                             $this->_klaviyoLogger->log(sprintf(
@@ -183,6 +184,13 @@ class Data extends AbstractHelper
                             $fallback_profile = $api->searchProfileByEmail($email);
                             if ($fallback_profile) {
                                 $api->addProfileToList($resolvedListId, $fallback_profile["profile_id"]);
+                                $this->updateCustomProperties(
+                                    $api,
+                                    $fallback_profile["profile_id"],
+                                    $firstName,
+                                    $lastName,
+                                    $properties
+                                );
                             } else {
                                 throw $e;
                             }
@@ -192,13 +200,36 @@ class Data extends AbstractHelper
                     // Profile already exists — use its ID to add to list.
                     $profile_id = $existing_profile["profile_id"];
                     $api->addProfileToList($resolvedListId, $profile_id);
-                    if ($properties && is_array($properties) && !empty($properties)) {
-                        $api->updateProfile($profile_id, $firstName, $lastName, $properties);
-                    }
+                    $this->updateCustomProperties($api, $profile_id, $firstName, $lastName, $properties);
                 }
             }
         } catch (\Exception $e) {
             $this->_klaviyoLogger->log(sprintf('Unable to subscribe %s to list %s: %s', $email, $resolvedListId, $e));
+        }
+    }
+
+    /**
+     * @param mixed $properties
+     * @return bool
+     */
+    private function hasCustomProperties($properties)
+    {
+        return is_array($properties) && !empty($properties);
+    }
+
+    /**
+     * Applies Budsies custom properties to an existing profile after it was added to a list
+     *
+     * @param KlaviyoV3Api $api
+     * @param string $profileId
+     * @param string|null $firstName
+     * @param string|null $lastName
+     * @param array|null $properties
+     */
+    private function updateCustomProperties($api, $profileId, $firstName, $lastName, $properties)
+    {
+        if ($this->hasCustomProperties($properties)) {
+            $api->updateProfile($profileId, $firstName, $lastName, $properties);
         }
     }
 
@@ -285,5 +316,4 @@ class Data extends AbstractHelper
         $api = $this->buildKlaviyoV3Api($storeId);
         return $api->searchProfileByEmail($email);
     }
-
 }
