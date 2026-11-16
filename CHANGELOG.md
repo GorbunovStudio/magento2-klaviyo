@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- BEGIN RELEASE NOTES -->
 ### [Unreleased]
 
+### [5.2.0] - 2026-08-24
+
+#### Changed
+- Updates OAuth callback url to support EU region accounts. This is a minimum requirement for any accounts in Klaviyo's EU region.
+
+### [5.1.1] - 2026-08-04
+
+#### Added
+- Include `change_status_at` on packaged newsletter subscriber payloads so historical consent sync can backdate list consent.
+
+### [5.1.0] - 2026-07-08
+
+#### Added
+- New `GET /V1/klaviyo/reclaim/plugin-settings` endpoint that returns the extension's configured plugin settings for a given store (passed as `store_id`), to speed up support troubleshooting. Sensitive values (Private Klaviyo API Key, Webhook Secret) are reported as `PRESENT`/`NULL` rather than exposed.
+
+#### Fixed
+- Resolved warnings for PHP 8.5
+- Fixed a PHP 8.5 deprecation (`array_key_exists()` called with a `null` key) in `ScopeSetting::getStoreIdKlaviyoAccountSetMap()` for stores with no Klaviyo Public API Key configured
+
+### [5.0.0] - 2026-05-29
+
+#### Added
+- WhatsApp consent collection at checkout via a new unified Mobile consent group. Merchants choose to collect consent for SMS, WhatsApp, or both, and a single mobile checkbox at checkout drives per-channel subscriptions in Klaviyo.
+
+#### Changed
+- Replaced the SMS consent admin group with a unified Mobile group. Existing SMS settings are migrated to the new paths on upgrade; custom label and disclosure copy is preserved.
+- Consent submission at order placement now uses the V3 /api/profile-subscription-bulk-create-jobs/ endpoint instead of the legacy custom webhook.
+- Phone numbers collected at checkout are now normalized to E.164 before being sent to Klaviyo.
+
+#### Removed
+- Support for PHP versions below 8.1. The plugin now requires PHP 8.1 or later, aligning with Magento 2.4.5+. Merchants on PHP 7.x must upgrade their PHP runtime before installing this release.
+
+### [4.4.4] - 2026-04-30
+
+#### Changed
+- Update Klaviyo V3 API revision to 2026-04-15.
+
+#### Fixed
+- Fixed race condition for adding profiles to a list, retries subscription if we attempt to create a profile that already exists.
+
+### [4.4.3] - 2026-02-17
+
+#### Added
+- Adds AddedItemImageUrl to Added To Cart event payload
+
+#### Fixed
+- Added fallback image selection for Added To Cart events to fix cases where there is no "small_image" set on the product. This greatly reduces the possibility that "AddedItemImageUrlKey" will be set to null or "no_selection"
+
+### [4.4.2] - 2025-11-04
+
+#### Changed
+- Update Klaviyo V3 API revision to 2025-10-15
+
+#### Added
+- Add isKlaviyoEnabled to product/viewed.phtml.
+
+#### Fixed
+- Ensure Controller/Checkout/Email.php loads proper classes on frontend.
+
+### [4.4.1] - 2025-09-15
+
+#### Fixed
+- Removes escapeJs call that was preventing Viewed Product events from syncing successfully in 4.4.0
+
+### [4.4.0] - 2025-08-11
+
+#### Added
+- Add 'kl_parent_ids' extension attribute in product requests.
+
+#### Fixed
+- null argument to str_replace() caused by getPrice() fallback return of null instead of "0".
+
 ### [4.3.1] - 2025-05-09
 
 #### Fixed
@@ -317,7 +389,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- END RELEASE NOTES -->
 <!-- BEGIN LINKS -->
-[Unreleased]: https://github.com/klaviyo/magento2-klaviyo/compare/4.3.1...HEAD
+[Unreleased]: https://github.com/klaviyo/magento2-klaviyo/compare/5.2.0...HEAD
+[5.2.0]: https://github.com/klaviyo/magento2-klaviyo/compare/5.1.1...5.2.0
+[5.1.1]: https://github.com/klaviyo/magento2-klaviyo/compare/5.1.0...5.1.1
+[5.1.0]: https://github.com/klaviyo/magento2-klaviyo/compare/5.0.0...5.1.0
+[5.0.0]: https://github.com/klaviyo/magento2-klaviyo/compare/4.4.4...5.0.0
+[4.4.4]: https://github.com/klaviyo/magento2-klaviyo/compare/4.4.3...4.4.4
+[4.4.3]: https://github.com/klaviyo/magento2-klaviyo/compare/4.4.2...4.4.3
+[4.4.2]: https://github.com/klaviyo/magento2-klaviyo/compare/4.4.1...4.4.2
+[4.4.1]: https://github.com/klaviyo/magento2-klaviyo/compare/4.4.0...4.4.1
+[4.4.0]: https://github.com/klaviyo/magento2-klaviyo/compare/4.3.1...4.4.0
 [4.3.1]: https://github.com/klaviyo/magento2-klaviyo/compare/4.3.0...4.3.1
 [4.3.0]: https://github.com/klaviyo/magento2-klaviyo/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/klaviyo/magento2-klaviyo/compare/4.1.4...4.2.0

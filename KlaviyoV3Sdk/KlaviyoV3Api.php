@@ -7,6 +7,7 @@ use Klaviyo\Reclaim\Helper\ScopeSetting;
 use Klaviyo\Reclaim\KlaviyoV3Sdk\Exception\KlaviyoApiException;
 use Klaviyo\Reclaim\KlaviyoV3Sdk\Exception\KlaviyoAuthenticationException;
 use Klaviyo\Reclaim\KlaviyoV3Sdk\Exception\KlaviyoRateLimitException;
+use Klaviyo\Reclaim\KlaviyoV3Sdk\Exception\KlaviyoResourceConflictException;
 
 class KlaviyoV3Api
 {
@@ -14,7 +15,7 @@ class KlaviyoV3Api
      * Host and versions
      */
     const KLAVIYO_HOST = 'https://a.klaviyo.com/';
-    const KLAVIYO_V3_REVISION = '2025-04-15';
+    const KLAVIYO_V3_REVISION = '2026-04-15';
 
     /**
      * Request methods
@@ -92,11 +93,13 @@ class KlaviyoV3Api
      * @param $public_key
      * @param $private_key
      * @param ScopeSetting $klaviyoScopeSetting
+     * @param mixed $logger Optional logger (accepted for forward compatibility but unused internally)
      */
     public function __construct(
         $public_key,
         $private_key,
-        ScopeSetting $klaviyoScopeSetting
+        ScopeSetting $klaviyoScopeSetting,
+        $logger = null
     ) {
         $this->public_key = $public_key;
         $this->private_key = $private_key;
@@ -133,7 +136,7 @@ class KlaviyoV3Api
 
     /**
      * Query for all available lists in Klaviyo
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/get_lists
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/get_lists
      *
      * @return array
      * @throws KlaviyoApiException
@@ -159,7 +162,7 @@ class KlaviyoV3Api
 
     /**
      * Search for profile by Email
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/get_profiles
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/get_profiles
      *
      * @param $email
      * @return false|mixed
@@ -182,7 +185,7 @@ class KlaviyoV3Api
 
     /**
      * Add a Profile to a list using profile id
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/create_list_relationships
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/create_list_relationships
      *
      * @param $list_id
      * @param $profile_id
@@ -205,7 +208,7 @@ class KlaviyoV3Api
 
     /**
      * Create a new Profile in Klaviyo
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/create_profile
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/create_profile
      *
      * @param $profile_properties
      * @return array|string|null
@@ -239,7 +242,7 @@ class KlaviyoV3Api
      */
     /**
      * Record an event for a customer on their Klaviyo profile
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/create_event
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/create_event
      *
      * @param $config
      * @return array
@@ -266,7 +269,7 @@ class KlaviyoV3Api
 
     /**
      * Subscribe members to a Klaviyo list
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/bulk_subscribe_profiles
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/bulk_subscribe_profiles
      *
      * @param $listId
      * @param $profiles
@@ -303,7 +306,7 @@ class KlaviyoV3Api
 
     /**
      * Unsubscribe profile from a Klaviyo list
-     * https://developers.klaviyo.com/en/v2025-04-15/reference/bulk_subscribe_profiles
+     * https://developers.klaviyo.com/en/v2025-10-15/reference/bulk_subscribe_profiles
      * @param string $email
      * @return array|null|string
      */
@@ -407,7 +410,7 @@ class KlaviyoV3Api
         $statusCode = curl_getinfo($curl, $phpVersionHttpCode);
         // In the event that the curl_exec fails for whatever reason, it responds with `false`,
         // Implementing a timeout and retry mechanism which will attempt the API call 3 times at 5 second intervals
-        if ($statusCode < 200 || $statusCode >= 300 || $response === false) {
+        if (($statusCode < 200 || $statusCode >= 300 || $response === false) && $statusCode !== 409) {
             if ($attempt < 3) {
                 sleep(1);
                 $this->requestV3($path, $method, $body, $attempt + 1);
@@ -415,7 +418,6 @@ class KlaviyoV3Api
                 $this->handleAPIResponse($response, $statusCode);
             }
         }
-        curl_close($curl);
 
         return $this->handleAPIResponse($response, $statusCode);
     }
@@ -488,7 +490,6 @@ class KlaviyoV3Api
      *
      * @return array
      */
-    #[\ReturnTypeWillChange]
     protected function getDefaultCurlOptions($method)
     {
         return array(
@@ -517,12 +518,22 @@ class KlaviyoV3Api
             throw new KlaviyoAuthenticationException(self::ERROR_NOT_AUTHORIZED, $statusCode);
         } elseif ($statusCode == 403) {
             throw new KlaviyoAuthenticationException(self::ERROR_FORBIDDEN, $statusCode);
+        } elseif ($statusCode == 409) {
+            throw new KlaviyoResourceConflictException(
+                isset($decoded_response['errors']) ? $decoded_response['errors'][0]['detail'] : sprintf(self::ERROR_NON_200_STATUS, $statusCode),
+                $statusCode,
+                null,
+                $decoded_response ?: []
+            );
         } elseif ($statusCode == 429) {
             throw new KlaviyoRateLimitException(
                 self::ERROR_RATE_LIMIT_EXCEEDED
             );
         } elseif ($statusCode < 200 || $statusCode >= 300) {
-            throw new KlaviyoApiException(isset($decoded_response['errors']) ? $decoded_response['errors'][0]['detail'] : sprintf(self::ERROR_NON_200_STATUS, $statusCode), $statusCode);
+            throw new KlaviyoApiException(
+                isset($decoded_response['errors']) ? $decoded_response['errors'][0]['detail'] : sprintf(self::ERROR_NON_200_STATUS, $statusCode),
+                $statusCode
+            );
         }
 
         return $decoded_response;
